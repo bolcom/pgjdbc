@@ -119,6 +119,40 @@ public class RefCursorTest extends BaseTest4 {
     call.close();
   }
 
+  @Test
+  public void testFetchSize() throws SQLException {
+    assumeCallableStatementsSupported();
+    CallableStatement call = con.prepareCall("{ ? = call testspg__getRefcursor () }");
+    call.registerOutParameter(1, cursorType);
+    call.setFetchSize(2);
+    call.execute();
+    ResultSet rs = (ResultSet) call.getObject(1);
+
+    assertTrue(rs.next());
+    assertTrue(rs.getInt(1) == 1);
+
+    assertTrue(rs.next());
+    assertTrue(rs.getInt(1) == 2);
+
+    assertTrue(rs.next());
+    assertTrue(rs.getInt(1) == 3);
+
+    assertTrue(rs.next());
+    assertTrue(rs.getInt(1) == 4);
+
+    assertTrue(rs.next());
+    assertTrue(rs.getInt(1) == 6);
+
+    assertTrue(rs.next());
+    assertTrue(rs.getInt(1) == 9);
+
+    assertTrue(!rs.next());
+    rs.close();
+
+    call.close();
+  }
+
+
 
   @Test
   public void testEmptyResult() throws SQLException {

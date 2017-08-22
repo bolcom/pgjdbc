@@ -13,6 +13,7 @@ import org.postgresql.core.Encoding;
 import org.postgresql.core.Field;
 import org.postgresql.core.Oid;
 import org.postgresql.core.Query;
+import org.postgresql.core.QueryExecutor;
 import org.postgresql.core.ResultCursor;
 import org.postgresql.core.ResultHandlerBase;
 import org.postgresql.core.TypeInfo;
@@ -232,7 +233,13 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
           // Fetch all results.
           String cursorName = getString(columnIndex);
 
-          StringBuilder sb = new StringBuilder("FETCH ALL IN ");
+          StringBuilder sb = new StringBuilder("FETCH ");
+          if (fetchSize > 0) {
+            sb.append("FORWARD ");
+            sb.append(fetchSize);
+          } else {
+            sb.append("ALL IN ");
+          }
           Utils.escapeIdentifier(sb, cursorName);
 
           // nb: no BEGIN triggered here. This is fine. If someone
@@ -252,11 +259,11 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
           // we could close in rs.close(), but if the transaction is closed before the result set,
           // then
           // the cursor no longer exists
+          if (fetchSize == 0) {
+            closeRefCursor(cursorName);
+          }
 
-          sb.setLength(0);
-          sb.append("CLOSE ");
-          Utils.escapeIdentifier(sb, cursorName);
-          connection.execSQLUpdate(sb.toString());
+          rs.setFetchSize(fetchSize);
           ((PgResultSet) rs).setRefCursor(cursorName);
           return rs;
         }
@@ -1827,7 +1834,7 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
     }
 
     if (current_row + 1 >= rows.size()) {
-      if (cursor == null || (maxRows > 0 && row_offset + rows.size() >= maxRows)) {
+      if (cursor == null && fetchSize == 0 || (maxRows > 0 && row_offset + rows.size() >= maxRows)) {
         current_row = rows.size();
         this_row = null;
         rowBuffer = null;
@@ -1846,7 +1853,16 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
       }
 
       // Execute the fetch and update this resultset.
-      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows);
+      if (refCursorName == null || refCursorName.isEmpty()) {
+        connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows);
+      } else {
+        StringBuilder sb = new StringBuilder("FETCH FORWARD ");
+        sb.append(fetchRows);
+        Utils.escapeIdentifier(sb, refCursorName);
+        final Query cursorForward = connection.getQueryExecutor().createSimpleQuery(sb.toString());
+        connection.getQueryExecutor().execute(cursorForward, null, new CursorResultHandler(), maxRows, fetchSize, QueryExecutor.QUERY_ONESHOT | QueryExecutor.QUERY_SUPPRESS_BEGIN
+                | QueryExecutor.QUERY_EXECUTE_AS_SIMPLE );
+      }
 
       current_row = 0;
 
@@ -1872,9 +1888,18 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
         cursor.close();
         cursor = null;
       }
+      if (refCursorName != null && fetchSize > 0) {
+        closeRefCursor(refCursorName);
+      }
     } finally {
       ((PgStatement) statement).checkCompletion();
     }
+  }
+
+  private void closeRefCursor(String refCursorName) throws SQLException {
+    StringBuilder sb = new StringBuilder("CLOSE ");
+    Utils.escapeIdentifier(sb, refCursorName);
+    connection.execSQLUpdate(sb.toString());
   }
 
   public boolean wasNull() throws SQLException {
