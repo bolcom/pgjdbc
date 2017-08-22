@@ -230,42 +230,7 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
 
         // Specialized support for ref cursors is neater.
         if (type.equals("refcursor")) {
-          // Fetch all results.
-          String cursorName = getString(columnIndex);
-
-          StringBuilder sb = new StringBuilder("FETCH ");
-          if (fetchSize > 0) {
-            sb.append("FORWARD ");
-            sb.append(fetchSize);
-          } else {
-            sb.append("ALL IN ");
-          }
-          Utils.escapeIdentifier(sb, cursorName);
-
-          // nb: no BEGIN triggered here. This is fine. If someone
-          // committed, and the cursor was not holdable (closing the
-          // cursor), we avoid starting a new xact and promptly causing
-          // it to fail. If the cursor *was* holdable, we don't want a
-          // new xact anyway since holdable cursor state isn't affected
-          // by xact boundaries. If our caller didn't commit at all, or
-          // autocommit was on, then we wouldn't issue a BEGIN anyway.
-          //
-          // We take the scrollability from the statement, but until
-          // we have updatable cursors it must be readonly.
-          ResultSet rs =
-              connection.execSQLQuery(sb.toString(), resultsettype, ResultSet.CONCUR_READ_ONLY);
-          //
-          // In long running transactions these backend cursors take up memory space
-          // we could close in rs.close(), but if the transaction is closed before the result set,
-          // then
-          // the cursor no longer exists
-          if (fetchSize == 0) {
-            closeRefCursor(cursorName);
-          }
-
-          rs.setFetchSize(fetchSize);
-          ((PgResultSet) rs).setRefCursor(cursorName);
-          return rs;
+          return getRefCursor(columnIndex);
         }
         if ("hstore".equals(type)) {
           if (isBinary(columnIndex)) {
@@ -277,6 +242,46 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
         // Caller determines what to do (JDBC3 overrides in this case)
         return null;
     }
+  }
+
+  private Object getRefCursor(int columnIndex) throws SQLException {
+    // Fetch all results.
+    String cursorName = getString(columnIndex);
+
+    StringBuilder sb = new StringBuilder("FETCH ");
+    if (fetchSize > 0) {
+      sb.append("FORWARD ");
+      sb.append(fetchSize);
+      sb.append(" IN ");
+    } else {
+      sb.append("ALL IN ");
+    }
+    Utils.escapeIdentifier(sb, cursorName);
+
+    // nb: no BEGIN triggered here. This is fine. If someone
+    // committed, and the cursor was not holdable (closing the
+    // cursor), we avoid starting a new xact and promptly causing
+    // it to fail. If the cursor *was* holdable, we don't want a
+    // new xact anyway since holdable cursor state isn't affected
+    // by xact boundaries. If our caller didn't commit at all, or
+    // autocommit was on, then we wouldn't issue a BEGIN anyway.
+    //
+    // We take the scrollability from the statement, but until
+    // we have updatable cursors it must be readonly.
+    ResultSet rs =
+        connection.execSQLQuery(sb.toString(), resultsettype, ResultSet.CONCUR_READ_ONLY);
+    //
+    // In long running transactions these backend cursors take up memory space
+    // we could close in rs.close(), but if the transaction is closed before the result set,
+    // then
+    // the cursor no longer exists
+    if (fetchSize == 0) {
+      closeRefCursor(cursorName);
+    }
+
+    rs.setFetchSize(fetchSize);
+    ((PgResultSet) rs).setRefCursor(cursorName);
+    return rs;
   }
 
   private void checkScrollable() throws SQLException {
@@ -1834,7 +1839,7 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
     }
 
     if (current_row + 1 >= rows.size()) {
-      if (cursor == null && fetchSize == 0 || (maxRows > 0 && row_offset + rows.size() >= maxRows)) {
+      if (checkEndOfResult()) {
         current_row = rows.size();
         this_row = null;
         rowBuffer = null;
@@ -1858,6 +1863,7 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
       } else {
         StringBuilder sb = new StringBuilder("FETCH FORWARD ");
         sb.append(fetchRows);
+        sb.append(" IN ");
         Utils.escapeIdentifier(sb, refCursorName);
         final Query cursorForward = connection.getQueryExecutor().createSimpleQuery(sb.toString());
         connection.getQueryExecutor().execute(cursorForward, null, new CursorResultHandler(), maxRows, fetchSize, QueryExecutor.QUERY_ONESHOT | QueryExecutor.QUERY_SUPPRESS_BEGIN
@@ -1878,6 +1884,10 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
 
     initRowBuffer();
     return true;
+  }
+
+  private boolean checkEndOfResult() {
+    return cursor == null && refCursorName == null || (refCursorName != null && fetchSize == 0) || (maxRows > 0 && row_offset + rows.size() >= maxRows);
   }
 
   public void close() throws SQLException {
