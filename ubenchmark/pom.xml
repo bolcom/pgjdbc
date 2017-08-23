@@ -56,7 +56,7 @@ POSSIBILITY OF SUCH DAMAGE.
     </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>postgresql-bol</artifactId>
       <version>${project.version}</version>
       <!--<scope>provided</scope>-->
     </dependency>
