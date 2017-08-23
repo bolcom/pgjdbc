@@ -7,12 +7,12 @@
     <relativePath />
   </parent>
 
-  <artifactId>postgresql</artifactId>
+  <artifactId>postgresql-bol</artifactId>
   <packaging>bundle</packaging>
   <name>PostgreSQL JDBC Driver - JDBC 4.2</name>
-  <version>42.1.4</version>
+  <version>42.1.4.1</version>
   <description>Java JDBC 4.2 (JRE 8+) driver for PostgreSQL database</description>
-  <url>https://github.com/pgjdbc/pgjdbc</url>
+  <url>https://github.com/bolcom/pgjdbc</url>
 
   <licenses>
     <license>

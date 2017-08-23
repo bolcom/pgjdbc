@@ -6,12 +6,12 @@
     <version>1.1.2</version>
   </parent>
 
-  <artifactId>pgjdbc-aggregate</artifactId>
+  <artifactId>pgjdbc-aggregate-bol</artifactId>
   <packaging>pom</packaging>
   <name>PostgreSQL JDBC Driver aggregate</name>
-  <version>42.1.4</version>
+  <version>42.1.4.1</version>
   <description>PgJDBC aggregate project</description>
-  <url>https://github.com/pgjdbc/pgjdbc</url>
+  <url>https://github.com/bolcom/pgjdbc</url>
 
   <modules>
     <module>pgjdbc</module>
