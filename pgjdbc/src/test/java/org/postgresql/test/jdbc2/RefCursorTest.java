@@ -90,48 +90,48 @@ public class RefCursorTest extends BaseTest4 {
 
   @Test
   public void testResult() throws SQLException {
-    assumeCallableStatementsSupported();
-    CallableStatement call = con.prepareCall("{ ? = call testspg__getRefcursor () }");
-    call.registerOutParameter(1, cursorType);
-    call.execute();
-    ResultSet rs = (ResultSet) call.getObject(1);
+    checkAndRunResult(null);
+    return;
+  }
 
-    assertTrue(rs.next());
-    assertEquals(1, rs.getInt(1));
+  @Test
+  public void testFetchSizeZero() throws SQLException {
+    checkAndRunResult(0);
+  }
 
-    assertTrue(rs.next());
-    assertEquals(2, rs.getInt(1));
+  @Test
+  public void testFetchSizeOne() throws SQLException {
+    checkAndRunResult(1);
+  }
 
-    assertTrue(rs.next());
-    assertEquals(3, rs.getInt(1));
+  @Test
+  public void testFetchSize() throws SQLException {
+    checkAndRunResult(3);
+  }
 
-    assertTrue(rs.next());
-    assertEquals(4, rs.getInt(1));
+  @Test
+  public void testFetchHighBoundDecrease1() throws SQLException {
+    checkAndRunResult(5);
+  }
 
-    assertTrue(rs.next());
-    assertEquals(6, rs.getInt(1));
+  @Test
+  public void testFetchHighBound() throws SQLException {
+    checkAndRunResult(6);
+  }
 
-    assertTrue(rs.next());
-    assertEquals(9, rs.getInt(1));
-
-    assertFalse(rs.next());
-    rs.close();
-
-    call.close();
+  @Test
+  public void testFetchHighBoundIncrease1() throws SQLException {
+    checkAndRunResult(7);
   }
 
   @Test
   public void testEmptyResult() throws SQLException {
-    assumeCallableStatementsSupported();
-    CallableStatement call = con.prepareCall("{ ? = call testspg__getEmptyRefcursor () }");
-    call.registerOutParameter(1, cursorType);
-    call.execute();
+    checkAndRunEmptyResult(null);
+  }
 
-    ResultSet rs = (ResultSet) call.getObject(1);
-    assertTrue(!rs.next());
-    rs.close();
-
-    call.close();
+  @Test
+  public void testFetchEmptyResult() throws SQLException {
+    checkAndRunEmptyResult(3);
   }
 
   @Test
@@ -168,6 +168,56 @@ public class RefCursorTest extends BaseTest4 {
     assertTrue(rs.last());
     assertEquals(6, rs.getRow());
     rs.close();
+    call.close();
+  }
+
+  private void checkAndRunResult(Integer fetchSize) throws SQLException {
+    assumeCallableStatementsSupported();
+    CallableStatement call = con.prepareCall("{ ? = call testspg__getRefcursor () }");
+    call.registerOutParameter(1, cursorType);
+    if (fetchSize != null) {
+      call.setFetchSize(fetchSize);
+    }
+    call.execute();
+    ResultSet rs = (ResultSet) call.getObject(1);
+
+    assertTrue(rs.next());
+    assertEquals(1, rs.getInt(1));
+
+    assertTrue(rs.next());
+    assertEquals(2, rs.getInt(1));
+
+    assertTrue(rs.next());
+    assertEquals(3, rs.getInt(1));
+
+    assertTrue(rs.next());
+    assertEquals(4, rs.getInt(1));
+
+    assertTrue(rs.next());
+    assertEquals(6, rs.getInt(1));
+
+    assertTrue(rs.next());
+    assertEquals(9, rs.getInt(1));
+
+    assertFalse(rs.next());
+    rs.close();
+
+    call.close();
+  }
+
+  private void checkAndRunEmptyResult(Integer fetchSize) throws SQLException {
+    assumeCallableStatementsSupported();
+    CallableStatement call = con.prepareCall("{ ? = call testspg__getEmptyRefcursor () }");
+    call.registerOutParameter(1, cursorType);
+    if (fetchSize != null) {
+      call.setFetchSize(fetchSize);
+    }
+    call.execute();
+
+    ResultSet rs = (ResultSet) call.getObject(1);
+    assertTrue(!rs.next());
+    rs.close();
+
     call.close();
   }
 
