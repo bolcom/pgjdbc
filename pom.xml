@@ -6,7 +6,7 @@
     <version>1.1.6</version>
   </parent>
 
-  <artifactId>pgjdbc-aggregate</artifactId>
+  <artifactId>pgjdbc-aggregate-bol</artifactId>
   <packaging>pom</packaging>
   <name>PostgreSQL JDBC Driver aggregate</name>
   <version>42.2.6</version>

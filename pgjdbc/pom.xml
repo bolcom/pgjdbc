@@ -7,7 +7,7 @@
     <relativePath />
   </parent>
 
-  <artifactId>postgresql</artifactId>
+  <artifactId>postgresql-bol</artifactId>
   <packaging>bundle</packaging>
   <name>PostgreSQL JDBC Driver - JDBC 4.2</name>
   <version>42.2.6</version>
